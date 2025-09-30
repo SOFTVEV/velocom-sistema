@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<title>Velocom S.A.S - Sistema de Usuarios</title>
+<style>
+body { margin:0; font-family:'Arial', sans-serif; background:#0a0f1f; color:#e0f7fa; }
+header{ display:flex; align-items:center; justify-content:center; background:#0a0f1f; color:white; padding:20px; font-size:2em; font-weight:bold; }
+header img{ height:70px; margin-right:15px; }
+#loginContainer{ display:flex; justify-content:center; align-items:center; height:100vh; background:linear-gradient(to right,#0d3b66,#1a5a9e); flex-direction:column; color:white; }
+#loginBox{ background:white; color:#0d3b66; padding:30px; border-radius:15px; box-shadow:0 5px 15px rgba(0,0,0,0.3); width:300px; text-align:center; }
+#loginBox h2{text-align:center; color:#0d3b66;}
+#loginBox input{ width:100%; padding:10px; margin:10px 0; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; }
+#loginBox button{ width:100%; padding:10px; border:none; border-radius:5px; background:#0d3b66; color:white; font-weight:bold; cursor:pointer; transition:0.3s; }
+#loginBox button:hover{ background:#1a5a9e; }
+#dashboard{ display:none; padding:20px; }
+.form-group { margin-bottom:10px; }
+label { display:block; margin-bottom:5px; font-weight:bold; }
+input, select, textarea { padding:8px; width:100%; border-radius:5px; border:1px solid #ccc; box-sizing:border-box; }
+textarea { resize:none; height:60px; }
+button { padding:10px 20px; margin:5px; border:none; border-radius:5px; background:#0d3b66; color:white; cursor:pointer; transition:0.3s; }
+button:hover { background:#1a5a9e; }
+.card-container { display:flex; flex-wrap:wrap; gap:15px; margin-top:20px; }
+.card { background:#1a1f33; color:#e0f7fa; border-radius:10px; padding:15px; width:220px; box-shadow:0 4px 8px rgba(0,0,0,0.5); position:relative; transition:transform 0.2s; cursor:pointer; }
+.card:hover{ transform:scale(1.05);}
+.card .estado{ position:absolute; top:10px; right:10px; padding:5px 10px; border-radius:5px; font-weight:bold; }
+.activo{ background:#4caf50; color:white; }
+.por-caducar{ background:#ffeb3b; color:black; }
+.caducado{ background:#f44336; color:white; }
+#factura{ display:none; position:fixed; top:50%; left:50%; transform:translate(-50%,-50%); background:#0a0f1f; color:#e0f7fa; padding:30px; border-radius:10px; box-shadow:0 5px 15px rgba(0,0,0,0.8); width:400px; z-index:1000; }
+#factura h2{ text-align:center; color:#00e5ff; }
+#factura img{ display:block; margin:0 auto 10px auto; height:60px; }
+#factura button{ background:#f44336; width:100%; margin-top:15px; }
+</style>
+</head>
+<body>
+
+<!-- LOGIN -->
+<div id="loginContainer">
+  <img src="1a0835c0-d624-4d75-846f-21c703c46401.png" alt="Velocom Logo" style="height:100px; margin-bottom:20px;">
+  <h1>Bienvenido a Velocom</h1>
+  <div id="loginBox">
+    <h2>Iniciar Sesión</h2>
+    <input type="text" id="usuario" placeholder="Usuario">
+    <input type="password" id="contrasena" placeholder="Contraseña">
+    <button onclick="login()">Ingresar</button>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dashboard">
+  <header><img src="1a0835c0-d624-4d75-846f-21c703c46401.png" alt="Velocom Logo">Sistema Usuarios Velocom S.A.S</header>
+  <div class="container">
+    <h2>Registro de Usuarios</h2>
+    <div class="form-group"><label>Nombre:</label><input type="text" id="nombre"></div>
+    <div class="form-group"><label>Apellido:</label><input type="text" id="apellido"></div>
+    <div class="form-group"><label>Teléfono:</label><input type="text" id="telefono"></div>
+    <div class="form-group"><label>Estado:</label>
+      <select id="estado"><option value="activo">Activo</option><option value="inactivo">Inactivo</option></select>
+    </div>
+    <div class="form-group"><label>Fecha Inicio:</label><input type="date" id="fechaInicio"></div>
+    <div class="form-group"><label>Días del Plan:</label><input type="number" id="diasPlan" min="1"></div>
+    <div class="form-group"><label>Costo del Plan (miles COP):</label><input type="number" id="costoPlan" min="0" step="0.01"></div>
+    <div class="form-group"><label>Observaciones:</label><textarea id="observaciones" placeholder="Escribe aquí tus observaciones..."></textarea></div>
+
+    <button onclick="agregarUsuario()">Agregar</button>
+    <button onclick="actualizarUsuario()">Actualizar</button>
+    <button onclick="eliminarUsuario()">Eliminar</button>
+    <button onclick="reiniciarUsuarios()">Reiniciar</button>
+    <button onclick="buscarUsuario()">Buscar</button>
+    <button onclick="generarFactura()">Generar Factura</button>
+    <button onclick="cerrarSesion()">Cerrar Sesión</button>
+
+    <div class="card-container" id="cardsUsuarios"></div>
+  </div>
+</div>
+
+<!-- FACTURA -->
+<div id="factura">
+  <img src="1a0835c0-d624-4d75-846f-21c703c46401.png" alt="Velocom Logo">
+  <h2>Factura de Venta Velocom S.A.S</h2>
+  <div id="contenidoFactura"></div>
+  <button onclick="descargarPDF()">Descargar PDF</button>
+  <button onclick="cerrarFactura()">Cerrar</button>
+</div>
+
+<!-- JSDOC PARA PDF -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script>
+const accesos = [{usuario:'jorgev', contrasena:'1088313500'},{usuario:'germanv', contrasena:'12345678'}];
+function login(){
+  const user=document.getElementById('usuario').value;
+  const pass=document.getElementById('contrasena').value;
+  const valido=accesos.find(u=>u.usuario===user && u.contrasena===pass);
+  if(valido){ 
+    document.getElementById('loginContainer').style.display='none'; 
+    document.getElementById('dashboard').style.display='block'; 
+  } else alert('Usuario o contraseña incorrectos');
+}
+function cerrarSesion(){
+  document.getElementById('dashboard').style.display='none';
+  document.getElementById('loginContainer').style.display='flex';
+  limpiarCampos();
+}
+
+let usuarios=[]; let usuarioSeleccionado=null;
+
+function actualizarCards() {
+  const container=document.getElementById("cardsUsuarios"); container.innerHTML='';
+  const hoy=new Date();
+  usuarios.forEach((u,index)=>{
+    const fin=new Date(u.fin); const diasRestantes=(fin-hoy)/(1000*60*60*24);
+    let clase='';
+    if(hoy<new Date(u.inicio)) clase=''; 
+    else if(diasRestantes>5) clase='activo'; 
+    else if(diasRestantes<=5 && diasRestantes>0) clase='por-caducar'; 
+    else clase='caducado';
+    const card=document.createElement('div'); card.className='card';
+    card.innerHTML=`<div class="estado ${clase}">${u.estado}</div><h3>${u.nombre} ${u.apellido}</h3>
+      <p><strong>Tel:</strong> ${u.telefono}</p><p><strong>Inicio:</strong> ${u.inicio}</p>
+      <p><strong>Fin:</strong> ${u.fin}</p><p><strong>Días:</strong> ${u.dias}</p>
+      <p><strong>Costo:</strong> $${u.costo} mil COP</p>
+      <p><strong>Observaciones:</strong> ${u.observaciones || ''}</p>`;
+    card.onclick=()=> seleccionarUsuario(index);
+    container.appendChild(card);
+  });
+}
+
+function agregarUsuario() {
+  const nombre=document.getElementById("nombre").value;
+  const apellido=document.getElementById("apellido").value;
+  const telefono=document.getElementById("telefono").value;
+  const estado=document.getElementById("estado").value;
+  const inicio=document.getElementById("fechaInicio").value;
+  const dias=parseInt(document.getElementById("diasPlan").value);
+  const costo=parseFloat(document.getElementById("costoPlan").value).toFixed(2);
+  const observaciones=document.getElementById("observaciones").value;
+  if(!nombre||!apellido||!telefono||!inicio||!dias||!costo){ alert("Complete todos los campos"); return;}
+  const fin=new Date(inicio); fin.setDate(fin.getDate()+dias);
+  usuarios.push({nombre,apellido,telefono,estado,inicio,fin:fin.toISOString().split('T')[0],dias,costo,observaciones});
+  actualizarCards(); limpiarCampos();
+}
+
+function seleccionarUsuario(index){ usuarioSeleccionado=index; const u=usuarios[index];
+  document.getElementById("nombre").value=u.nombre; document.getElementById("apellido").value=u.apellido;
+  document.getElementById("telefono").value=u.telefono; document.getElementById("estado").value=u.estado;
+  document.getElementById("fechaInicio").value=u.inicio; document.getElementById("diasPlan").value=u.dias;
+  document.getElementById("costoPlan").value=u.costo; document.getElementById("observaciones").value=u.observaciones;
+}
+
+function actualizarUsuario(){ 
+  if(usuarioSeleccionado===null){alert("Seleccione un usuario");return;} 
+  const nombre=document.getElementById("nombre").value;
+  const apellido=document.getElementById("apellido").value;
+  const telefono=document.getElementById("telefono").value;
+  const estado=document.getElementById("estado").value;
+  const inicio=document.getElementById("fechaInicio").value;
+  const dias=parseInt(document.getElementById("diasPlan").value);
+  const costo=parseFloat(document.getElementById("costoPlan").value).toFixed(2);
+  const observaciones=document.getElementById("observaciones").value;
+  const fin=new Date(inicio); fin.setDate(fin.getDate()+dias);
+  usuarios[usuarioSeleccionado]={nombre,apellido,telefono,estado,inicio,fin:fin.toISOString().split('T')[0],dias,costo,observaciones};
+  actualizarCards(); limpiarCampos(); usuarioSeleccionado=null;
+}
+
+function eliminarUsuario(){ if(usuarioSeleccionado===null){alert("Seleccione un usuario");return;} usuarios.splice(usuarioSeleccionado,1); usuarioSeleccionado=null; actualizarCards(); limpiarCampos(); }
+function reiniciarUsuarios(){ if(confirm("¿Desea reiniciar todos los usuarios?")){ usuarios=[]; actualizarCards(); limpiarCampos(); } }
+function buscarUsuario(){ const nombre=prompt("Ingrese el nombre a buscar:").toLowerCase(); const index=usuarios.findIndex(u=>u.nombre.toLowerCase()===nombre); if(index!==-1){ seleccionarUsuario(index); alert("Usuario encontrado"); } else alert("Usuario no encontrado"); }
+function limpiarCampos(){ document.getElementById("nombre").value=''; document.getElementById("apellido").value=''; document.getElementById("telefono").value=''; document.getElementById("estado").value='activo'; document.getElementById("fechaInicio").value=''; document.getElementById("diasPlan").value=''; document.getElementById("costoPlan").value=''; document.getElementById("observaciones").value=''; }
+
+function generarFactura(){
+  if(usuarioSeleccionado===null){ alert("Seleccione un usuario"); return;}
+  const u=usuarios[usuarioSeleccionado];
+  const contenido=document.getElementById("contenidoFactura");
+  contenido.innerHTML=`<p><strong>Nombre:</strong> ${u.nombre} ${u.apellido}</p>
+    <p><strong>Teléfono:</strong> ${u.telefono}</p>
+    <p><strong>Estado:</strong> ${u.estado}</p>
+    <p><strong>Costo del Plan:</strong> $${u.costo} mil COP</p>
+    <p><strong>Fecha Inicio:</strong> ${u.inicio}</p>
+    <p><strong>Fecha Fin:</strong> ${u.fin}</p>
+    <p><strong>Días:</strong> ${u.dias}</p>
+    <p><strong>Observaciones:</strong> ${u.observaciones || ''}</p>`;
+  document.getElementById("factura").style.display="block";
+}
+function cerrarFactura(){ document.getElementById("factura").style.display="none"; }
+
+function descargarPDF(){
+  if(usuarioSeleccionado===null){ alert("Seleccione un usuario"); return;}
+  const { jsPDF } = window.jspdf;
+  const doc = new jsPDF('p','pt','a4');
+  const u = usuarios[usuarioSeleccionado];
+
+  const margenIzq = 40;
+  const margenSup = 40;
+  const anchoHoja = doc.internal.pageSize.getWidth() - margenIzq*2;
+
+  doc.setFillColor(240,240,240);
+  doc.rect(margenIzq, margenSup, anchoHoja, 700, 'F');
+
+  doc.addImage('1a0835c0-d624-4d75-846f-21c703c46401.png', 'PNG', margenIzq + 50, margenSup + 10, anchoHoja-100, 200, undefined, 'FAST');
+
+  doc.setFontSize(22); doc.setTextColor(0, 70, 140);
+  doc.text("Factura de Venta Velocom S.A.S", doc.internal.pageSize.getWidth()/2, 230, null, null, "center");
+
+  doc.setFontSize(14); doc.setTextColor(0,0,0);
+  doc.text(`Nombre: ${u.nombre} ${u.apellido}`, margenIzq+20, 270);
+  doc.text(`Teléfono: ${u.telefono}`, margenIzq+20, 290);
+  doc.text(`Estado: ${u.estado}`, margenIzq+20, 310);
+  doc.text(`Fecha Inicio: ${u.inicio}`, margenIzq+20, 330);
+  doc.text(`Fecha Fin: ${u.fin}`, margenIzq+20, 350);
+  doc.text(`Días del Plan: ${u.dias}`, margenIzq+20, 370);
+  doc.text(`Costo del Plan: $${u.costo} mil COP`, margenIzq+20, 390);
+  doc.text(`Observaciones: ${u.observaciones || ''}`, margenIzq+20, 410);
+
+  doc.setDrawColor(0,70,140); doc.setLineWidth(1); doc.line(margenIzq, 430, margenIzq + anchoHoja, 430);
+
+  doc.setFontSize(12); doc.text("Administrado por: German Vargas", margenIzq+20, 450);
+  doc.text("Contacto de soporte técnico: 3108120008", margenIzq+20, 470);
+  doc.text("Vereda: Villa Lobos del Caguán", margenIzq+20, 490);
+
+  doc.setTextColor(0,100,0); doc.text("Gracias por su apoyo y aporte a nuestro emprendimiento", doc.internal.pageSize.getWidth()/2, 520, null, null, "center");
+
+  doc.setFontSize(60); doc.setTextColor(200,200,200); doc.text("VELOCOM", doc.internal.pageSize.getWidth()/2, 400, null, null, "center");
+
+  doc.save(`Factura_${u.nombre}_${u.apellido}.pdf`);
+}
+</script>
+</body>
+</html>
